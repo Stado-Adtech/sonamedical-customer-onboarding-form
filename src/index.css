@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #1c2333;
+  --ink-soft: #545d72;
+  --paper: #f6f4ee;
+  --panel: #ffffff;
+  --navy: #182548;
+  --navy-deep: #0f1830;
+  --amber: #c9922f;
+  --amber-deep: #a8741e;
+  --line: #d8d3c4;
+  --error: #b3432b;
+  --success: #2f7a4f;
+
+  --font-display: "Newsreader", Georgia, serif;
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--paper);
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--navy-deep);
+  margin: 0;
+}
+
+a {
+  color: var(--navy);
+}
+
+button {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--amber-deep);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

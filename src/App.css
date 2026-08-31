@@ -1,0 +1,253 @@
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 20px 64px;
+}
+
+.masthead {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 36px;
+}
+
+.masthead .brand {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--navy-deep);
+  letter-spacing: 0.01em;
+}
+
+.masthead .tagline {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* --- the "record card" signature element --- */
+.record-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  box-shadow: 0 1px 0 var(--line), 0 12px 28px -18px rgba(15, 24, 48, 0.35);
+  position: relative;
+  padding: 40px 36px 32px;
+}
+
+.record-card.wide {
+  max-width: 640px;
+}
+
+.record-card::before {
+  content: attr(data-tab);
+  position: absolute;
+  top: -13px;
+  left: 32px;
+  background: var(--navy-deep);
+  color: var(--paper);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 2px;
+}
+
+.record-card .record-no {
+  position: absolute;
+  top: 18px;
+  right: 24px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--ink-soft);
+  letter-spacing: 0.05em;
+}
+
+.record-card h1 {
+  font-size: 26px;
+  margin-bottom: 6px;
+}
+
+.record-card .subtitle {
+  color: var(--ink-soft);
+  font-size: 14px;
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+
+.field-group {
+  margin-bottom: 18px;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--navy);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+input,
+textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: #fdfcf9;
+  font-size: 15px;
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--navy);
+  background: #ffffff;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 6px;
+}
+
+.error-text {
+  font-size: 13px;
+  color: var(--error);
+  background: #fbeeea;
+  border: 1px solid #edcabf;
+  border-radius: 2px;
+  padding: 10px 12px;
+  margin-bottom: 18px;
+}
+
+.notice {
+  font-size: 13px;
+  color: var(--navy-deep);
+  background: #eef1f8;
+  border: 1px solid #cdd6ea;
+  border-radius: 2px;
+  padding: 10px 12px;
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+
+.btn-primary {
+  width: 100%;
+  background: var(--navy-deep);
+  color: var(--paper);
+  border: none;
+  padding: 13px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  margin-top: 6px;
+}
+
+.btn-primary:hover {
+  background: var(--navy);
+}
+
+.btn-primary:disabled {
+  background: #9aa2b5;
+  cursor: not-allowed;
+}
+
+.divider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 26px 0 22px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.divider-row::before,
+.divider-row::after {
+  content: "";
+  flex: 1;
+  border-top: 1px dashed var(--line);
+}
+
+.switch-link {
+  text-align: center;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.switch-link button {
+  background: none;
+  border: none;
+  color: var(--amber-deep);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dashboard-card {
+  width: 100%;
+  max-width: 640px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 32px 36px;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.logout-link {
+  background: none;
+  border: 1px solid var(--line);
+  padding: 8px 14px;
+  border-radius: 2px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+
+.logout-link:hover {
+  border-color: var(--navy);
+  color: var(--navy);
+}
+
+@media (max-width: 560px) {
+  .record-card {
+    padding: 30px 22px 26px;
+  }
+  .field-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
