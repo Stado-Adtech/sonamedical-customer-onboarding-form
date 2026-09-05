@@ -59,13 +59,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <div className="shell">
-          <div className="masthead">
-            <span className="brand">Customer Portal</span>
-            <span className="tagline">Account Records</span>
-          </div>
           <AppRoutes />
-        </div>
       </AuthProvider>
     </BrowserRouter>
   );
