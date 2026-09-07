@@ -115,11 +115,11 @@ export default function SetNewPassword() {
         <div className="pointer-events-none absolute -bottom-36 -left-24 h-96 w-96 rounded-full border border-white/5" />
 
         {/* LOGO */}
-        <div className="relative z-10">
+          <div className="relative z-10">
           <img
             src="/inventory.png"
-            alt="Sona Medical"
-            className="h-10 w-auto object-contain"
+            alt="Company name"
+            className="h-20 w-auto object-contain sm:h-24"
           />
         </div>
 
