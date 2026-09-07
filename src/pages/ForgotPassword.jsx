@@ -101,11 +101,11 @@ export default function ForgotPassword() {
         />
 
         {/* Logo */}
-        <div className="relative z-10">
+         <div className="relative z-10">
           <img
             src="/inventory.png"
             alt="Company name"
-            className="h-9 w-auto object-contain"
+            className="h-20 w-auto object-contain sm:h-24"
           />
         </div>
 
@@ -167,7 +167,7 @@ export default function ForgotPassword() {
         >
           Need help resetting your password?{" "}
           <a
-            href="mailto:support@example.com"
+            href="mailto:medicare@sonaind.in"
             className="
               text-[#F7F5EF]
               underline
@@ -177,7 +177,7 @@ export default function ForgotPassword() {
               hover:decoration-white
             "
           >
-            support@example.com
+            medicare@sonaind.in
           </a>
         </div>
       </div>
@@ -261,7 +261,7 @@ export default function ForgotPassword() {
                 autoComplete="username"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="e.g. 9876543210"
+                placeholder="e.g. 9931917455"
                 className="
                   w-full
                   border-0

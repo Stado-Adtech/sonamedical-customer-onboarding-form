@@ -192,21 +192,22 @@ export default function Signup() {
     focus:ring-0
   `;
 
+  // CHANGED: readonly -> disabled styling with gray background only, no placeholder text
   const readonlyInputClass = `
     w-full
-    cursor-default
+    cursor-not-allowed
     border-0
     border-b-[1.5px]
-    border-dashed
     border-[#D8E0D9]
-    bg-transparent
+    bg-[#EDF1EE]
     px-0.5
     py-2.5
     text-[15px]
     text-[#4C5C55]
     outline-none
-    placeholder:text-[#A6B1AC]
+    transition-opacity
     focus:ring-0
+    disabled:opacity-70
   `;
 
   const labelClass =
@@ -251,11 +252,11 @@ export default function Signup() {
         </svg>
 
         {/* Logo */}
-        <div className="relative z-10">
+          <div className="relative z-10">
           <img
             src="/inventory.png"
             alt="Company name"
-            className="h-9 w-auto object-contain"
+            className="h-20 w-auto object-contain sm:h-24"
           />
         </div>
 
@@ -282,10 +283,10 @@ export default function Signup() {
         <div className="relative z-10 border-t border-white/20 pt-5 text-[13px] leading-6 text-[#AFC6BB]">
           Need help signing up?{" "}
           <a
-            href="mailto:support@example.com"
+            href="mailto:medicare@sonaind.in"
             className="text-[#F7F5EF] underline decoration-white/40 underline-offset-4 transition hover:decoration-white"
           >
-            support@example.com
+            medicare@sonaind.in
           </a>
         </div>
       </div>
@@ -347,7 +348,7 @@ export default function Signup() {
                   required
                   value={form.mobileNumber}
                   onChange={update("mobileNumber")}
-                  placeholder="e.g. 9876543210"
+                  placeholder="e.g. 9931917455"
                   className={inputClass}
                 />
               </div>
@@ -365,7 +366,7 @@ export default function Signup() {
                   type="tel"
                   value={form.alternateNumber}
                   onChange={update("alternateNumber")}
-                  placeholder="e.g. 9876543210"
+                  placeholder="e.g. 9931917455"
                   className={inputClass}
                 />
               </div>
@@ -384,7 +385,7 @@ export default function Signup() {
                   required
                   value={form.email}
                   onChange={update("email")}
-                  placeholder="you@example.com"
+                  placeholder="medicare@sonaind.in"
                   className={inputClass}
                 />
               </div>
@@ -532,6 +533,7 @@ export default function Signup() {
             </div>
 
             {/* City + State */}
+            {/* CHANGED: disabled instead of readOnly, no placeholder text — grayed/blurred/locked look */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
                 <label htmlFor="city" className={labelClass}>
@@ -540,9 +542,8 @@ export default function Signup() {
 
                 <input
                   id="city"
-                  readOnly
+                  disabled
                   value={form.city}
-                  placeholder="Auto-filled from PIN"
                   className={readonlyInputClass}
                 />
               </div>
@@ -554,15 +555,15 @@ export default function Signup() {
 
                 <input
                   id="state"
-                  readOnly
+                  disabled
                   value={form.state}
-                  placeholder="Auto-filled from PIN"
                   className={readonlyInputClass}
                 />
               </div>
             </div>
 
             {/* Country */}
+            {/* CHANGED: disabled instead of readOnly, no placeholder text */}
             <div>
               <label htmlFor="country" className={labelClass}>
                 Country
@@ -570,9 +571,8 @@ export default function Signup() {
 
               <input
                 id="country"
-                readOnly
+                disabled
                 value={form.country}
-                placeholder="Auto-filled from PIN"
                 className={readonlyInputClass}
               />
             </div>
@@ -584,19 +584,26 @@ export default function Signup() {
               </p>
             </div>
 
-            {/* Username info */}
-            <div className="border-l-2 border-dashed border-[#D8E0D9] pl-3 text-sm leading-6 text-[#4C5C55]">
-              Your username will be your mobile number
-              {form.mobileNumber && (
-                <>
-                  {" "}
-                  —{" "}
-                  <strong className="font-semibold text-[#152420]">
-                    {form.mobileNumber}
-                  </strong>
-                </>
-              )}
-              .
+            {/* CHANGED: direct username display instead of "your username will be..." sentence */}
+            <div>
+              <label className={labelClass}>Username</label>
+
+              <div
+                className="
+                  w-full
+                  border-0
+                  border-b-[1.5px]
+                  border-[#D8E0D9]
+                  bg-transparent
+                  px-0.5
+                  py-2.5
+                  text-[15px]
+                  font-semibold
+                  text-[#152420]
+                "
+              >
+                {form.mobileNumber || "—"}
+              </div>
             </div>
 
             {/* Passwords */}
