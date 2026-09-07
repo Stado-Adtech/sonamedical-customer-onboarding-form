@@ -494,19 +494,20 @@ export default function Dashboard() {
     focus:ring-[#1F4438]/10
   `;
 
+  // CHANGED: readonly -> disabled styling, gray background only, no placeholder text
   const readonlyInputClass = `
     w-full
-    cursor-default
+    cursor-not-allowed
     rounded-lg
     border
     border-[#D8E0D9]
-    bg-[#F7F8F5]
+    bg-[#EDF1EE]
     px-3
     py-2.5
     text-sm
     text-[#4C5C55]
     outline-none
-    placeholder:text-[#A0AAA5]
+    disabled:opacity-70
   `;
 
   const labelClass =
@@ -886,6 +887,7 @@ export default function Dashboard() {
             </div>
 
             {/* AUTO FETCHED LOCATION */}
+            {/* CHANGED: disabled instead of readOnly, no placeholder text — grayed/locked look */}
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
 
@@ -901,9 +903,8 @@ export default function Dashboard() {
 
                 <input
                   id="city"
-                  readOnly
+                  disabled
                   value={form?.city || ""}
-                  placeholder="Auto-filled"
                   className={
                     readonlyInputClass
                   }
@@ -922,9 +923,8 @@ export default function Dashboard() {
 
                 <input
                   id="state"
-                  readOnly
+                  disabled
                   value={form?.state || ""}
-                  placeholder="Auto-filled"
                   className={
                     readonlyInputClass
                   }
@@ -943,11 +943,10 @@ export default function Dashboard() {
 
                 <input
                   id="country"
-                  readOnly
+                  disabled
                   value={
                     form?.country || ""
                   }
-                  placeholder="Auto-filled"
                   className={
                     readonlyInputClass
                   }
