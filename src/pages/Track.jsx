@@ -5,6 +5,7 @@ import * as ordersApi from "../api/orders";
 
 const STAGES = [
   "Placed",
+  "Confirmed",
   "Processing",
   "Ready for Delivery",
   "Out for Delivery",
@@ -15,6 +16,7 @@ const STATUS_FILTER_OPTIONS = ["All", ...STAGES, "Cancelled"];
 
 const STATUS_STYLES = {
   placed: "bg-blue-50 text-blue-700 border-blue-100",
+  confirmed: "bg-teal-50 text-teal-700 border-teal-100",
   processing: "bg-amber-50 text-amber-700 border-amber-100",
   "ready-for-delivery":
     "bg-indigo-50 text-indigo-700 border-indigo-100",
@@ -23,6 +25,31 @@ const STATUS_STYLES = {
   delivered: "bg-emerald-50 text-emerald-700 border-emerald-100",
   cancelled: "bg-red-50 text-red-700 border-red-100",
 };
+
+// The admin/salesperson panel doesn't always write the exact stage label
+// (e.g. it saves "Processed" while the tracker's stage is "Processing").
+// This maps every status string we might receive from the backend onto
+// the canonical stage it belongs to, so the tracker and badge always
+// agree with each other.
+const STATUS_ALIASES = {
+  placed: "Placed",
+  confirmed: "Confirmed",
+  processing: "Processing",
+  processed: "Processing",
+  "partially processed": "Processing",
+  "ready for delivery": "Ready for Delivery",
+  "ready-for-delivery": "Ready for Delivery",
+  "out for delivery": "Out for Delivery",
+  "out-for-delivery": "Out for Delivery",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+  canceled: "Cancelled",
+};
+
+function canonicalStatus(status) {
+  const raw = String(status || "Placed").trim().toLowerCase();
+  return STATUS_ALIASES[raw] || status || "Placed";
+}
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -54,22 +81,37 @@ function dayKey(iso) {
 }
 
 function stageIndex(status) {
-  if (!status) return 0;
+  const canonical = canonicalStatus(status);
 
   const idx = STAGES.findIndex(
-    (stage) =>
-      stage.toLowerCase() === String(status).toLowerCase()
+    (stage) => stage.toLowerCase() === canonical.toLowerCase()
   );
 
   return idx === -1 ? 0 : idx;
 }
 
 function isCancelled(status) {
-  return String(status || "").toLowerCase() === "cancelled";
+  return canonicalStatus(status).toLowerCase() === "cancelled";
+}
+
+function isPlaced(status) {
+  return canonicalStatus(status).toLowerCase() === "placed";
+}
+
+function shouldShowDeliveryOtp(order) {
+  const status = String(order?.status || "").trim().toLowerCase();
+  const otp = String(order?.deliveryOtp || "").trim();
+
+  if (!otp) return false;
+
+  return (
+    status === "ready for delivery" ||
+    status === "out for delivery"
+  );
 }
 
 function statusKey(status) {
-  return (status || "placed")
+  return canonicalStatus(status)
     .toLowerCase()
     .replace(/\s+/g, "-");
 }
@@ -234,7 +276,7 @@ function StatusBadge({ status }) {
         ${style}
       `}
     >
-      {status || "Placed"}
+      {canonicalStatus(status)}
     </span>
   );
 }
@@ -369,6 +411,10 @@ export default function Track() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
+  // Confirm-order UI state
+  const [confirmingId, setConfirmingId] = useState(null);
+  const [confirmErrors, setConfirmErrors] = useState({});
+
   /* ----------------------------------
      LOAD ORDERS
   ---------------------------------- */
@@ -396,6 +442,33 @@ export default function Track() {
     setExpandedId((prev) =>
       prev === id ? null : id
     );
+  }
+
+  /* ----------------------------------
+     CONFIRM ORDER
+  ---------------------------------- */
+
+  async function handleConfirm(orderId) {
+    setConfirmingId(orderId);
+    setConfirmErrors((prev) => ({ ...prev, [orderId]: "" }));
+
+    try {
+      const { order: updatedOrder } = await ordersApi.confirmOrder(orderId);
+
+      setOrders((prev) =>
+        prev.map((o) =>
+          o._id === orderId ? { ...o, ...updatedOrder } : o
+        )
+      );
+    } catch (err) {
+      const message =
+        err.response?.data?.message ||
+        "Couldn't confirm this order. Please try again.";
+
+      setConfirmErrors((prev) => ({ ...prev, [orderId]: message }));
+    } finally {
+      setConfirmingId(null);
+    }
   }
 
   /* ----------------------------------
@@ -428,9 +501,7 @@ export default function Track() {
       }
 
       if (statusFilter !== "All") {
-        const currentStatus = String(
-          order.status || "Placed"
-        );
+        const currentStatus = canonicalStatus(order.status);
 
         if (
           currentStatus.toLowerCase() !==
@@ -772,6 +843,10 @@ export default function Track() {
                       const isExpanded =
                         expandedId === order._id;
 
+                      const needsConfirmation = isPlaced(
+                        order.status
+                      );
+
                       return (
                         <div
                           key={order._id}
@@ -865,13 +940,104 @@ export default function Track() {
                             </div>
                           </button>
 
+                          {/* CONFIRM ORDER BANNER (visible even when collapsed) */}
+
+                          {needsConfirmation && (
+                            <div
+                              className="
+                                flex
+                                flex-col
+                                gap-2
+                                border-t
+                                border-[#D8E0D9]
+                                bg-[#F0F6F2]
+                                px-4
+                                py-3
+                                sm:flex-row
+                                sm:items-center
+                                sm:justify-between
+                                sm:px-5
+                              "
+                            >
+                              <p className="text-sm text-[#4C5C55]">
+                                Please confirm this order so we
+                                can start processing it.
+                              </p>
+
+                              <button
+                                type="button"
+                                disabled={
+                                  confirmingId === order._id
+                                }
+                                onClick={() =>
+                                  handleConfirm(order._id)
+                                }
+                                className="
+                                  inline-flex
+                                  items-center
+                                  justify-center
+                                  rounded-lg
+                                  bg-[#1F4438]
+                                  px-4
+                                  py-2
+                                  text-sm
+                                  font-semibold
+                                  text-white
+                                  transition
+                                  hover:bg-[#173229]
+                                  disabled:cursor-not-allowed
+                                  disabled:opacity-60
+                                "
+                              >
+                                {confirmingId === order._id
+                                  ? "Confirming…"
+                                  : "Confirm Order"}
+                              </button>
+                            </div>
+                          )}
+
                           {/* EXPANDED */}
 
                           {isExpanded && (
                             <div className="border-t border-[#E5EAE7] px-4 py-5 sm:px-5">
+                              {confirmErrors[order._id] && (
+                                <p className="mb-4 text-sm text-red-600">
+                                  {confirmErrors[order._id]}
+                                </p>
+                              )}
+
                               <StatusTracker
                                 status={order.status}
                               />
+
+                              {/* CUSTOMER-VISIBLE DELIVERY OTP */}
+                              {shouldShowDeliveryOtp(order) && (
+                                <div className="mb-5 rounded-xl border border-[#B8D3C5] bg-[#EFF7F2] px-5 py-5">
+                                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#6B7B73]">
+                                    Delivery Verification
+                                  </p>
+
+                                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div>
+                                      <p className="text-sm text-[#4C5C55]">
+                                        Give this OTP to the delivery person only when you receive your order.
+                                      </p>
+                                      <p className="mt-1 text-xs text-[#89968F]">
+                                        Do not share it before receiving the order.
+                                      </p>
+                                    </div>
+
+                                    <div className="rounded-xl border border-[#1F4438]/20 bg-white px-6 py-3 text-center shadow-sm">
+                                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#89968F]">
+                                        Delivery OTP
+                                      </p>
+                                      <p className="mt-1 font-mono text-3xl font-bold tracking-[0.25em] text-[#1F4438]">
+                                        {order.deliveryOtp}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
 
                               {/* DELIVERY INFORMATION */}
 
