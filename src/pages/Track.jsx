@@ -18,12 +18,19 @@ const STATUS_STYLES = {
   placed: "bg-blue-50 text-blue-700 border-blue-100",
   confirmed: "bg-teal-50 text-teal-700 border-teal-100",
   processing: "bg-amber-50 text-amber-700 border-amber-100",
-  "ready-for-delivery":
-    "bg-indigo-50 text-indigo-700 border-indigo-100",
-  "out-for-delivery":
-    "bg-purple-50 text-purple-700 border-purple-100",
+  "ready-for-delivery": "bg-indigo-50 text-indigo-700 border-indigo-100",
+  "out-for-delivery": "bg-purple-50 text-purple-700 border-purple-100",
   delivered: "bg-emerald-50 text-emerald-700 border-emerald-100",
   cancelled: "bg-red-50 text-red-700 border-red-100",
+};
+
+// Payment styles. Backend field names assumed (rename to match your API):
+//   order.invoiceNumber, order.invoiceDate, order.invoiceAmount (falls back to grandTotal),
+//   order.paymentMethod, order.paymentStatus, order.amountPaid
+const PAYMENT_STYLES = {
+  paid: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  partial: "bg-amber-50 text-amber-700 border-amber-100",
+  pending: "bg-red-50 text-red-700 border-red-100",
 };
 
 // The admin/salesperson panel doesn't always write the exact stage label
@@ -61,17 +68,30 @@ function formatDate(iso) {
   });
 }
 
-function formatDateHeading(iso) {
-  return new Date(iso).toLocaleDateString(undefined, {
-    weekday: "long",
-    year: "numeric",
+// "Saturday, 26" — built manually so the order is the same in every locale
+function formatDayHeading(iso) {
+  const d = new Date(iso);
+  const weekday = d.toLocaleDateString("en-IN", { weekday: "long" });
+  return `${weekday}, ${d.getDate()}`;
+}
+
+// "September 2026"
+function formatMonthYear(iso) {
+  return new Date(iso).toLocaleDateString("en-IN", {
     month: "long",
-    day: "numeric",
+    year: "numeric",
   });
 }
 
 function formatCurrency(amount) {
   return `₹${Number(amount || 0).toLocaleString("en-IN")}`;
+}
+
+function formatMoney(amount) {
+  return `₹${Number(amount || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 function dayKey(iso) {
@@ -104,16 +124,26 @@ function shouldShowDeliveryOtp(order) {
 
   if (!otp) return false;
 
-  return (
-    status === "ready for delivery" ||
-    status === "out for delivery"
-  );
+  return status === "ready for delivery" || status === "out for delivery";
 }
 
 function statusKey(status) {
-  return canonicalStatus(status)
-    .toLowerCase()
-    .replace(/\s+/g, "-");
+  return canonicalStatus(status).toLowerCase().replace(/\s+/g, "-");
+}
+
+// Invoice amount, falling back to the order's grand total
+function invoiceAmountOf(order) {
+  return order.invoiceAmount != null ? order.invoiceAmount : order.grandTotal;
+}
+
+// Balance still due, or null when we don't know how much was paid
+function balanceDueOf(order) {
+  if (order.amountPaid == null) return null;
+
+  return Math.max(
+    Number(invoiceAmountOf(order) || 0) - Number(order.amountPaid || 0),
+    0
+  );
 }
 
 /* ----------------------------------
@@ -147,10 +177,7 @@ function SiteHeader({ onLogout }) {
           sm:px-6
         "
       >
-        <Link
-          to="/track"
-          className="flex items-center gap-2.5"
-        >
+        <Link to="/track" className="flex items-center gap-2.5">
           <span
             className="
               flex
@@ -232,17 +259,16 @@ function SiteFooter() {
         "
       >
         <p>
-          &copy; {new Date().getFullYear()} Sona Medical.
-          All rights reserved.
+          &copy; {new Date().getFullYear()} Sona Medical. All rights reserved.
         </p>
 
         <p>
           Need help with an order?{" "}
           <a
-            href="mailto:support@example.com"
+            href="mailto:medicare@sonaind.in"
             className="font-medium text-[#1F4438] hover:text-[#122E26]"
           >
-            support@example.com
+            medicare@sonaind.in
           </a>
         </p>
       </div>
@@ -257,9 +283,7 @@ function SiteFooter() {
 function StatusBadge({ status }) {
   const key = statusKey(status);
 
-  const style =
-    STATUS_STYLES[key] ||
-    "bg-gray-50 text-gray-700 border-gray-200";
+  const style = STATUS_STYLES[key] || "bg-gray-50 text-gray-700 border-gray-200";
 
   return (
     <span
@@ -277,6 +301,26 @@ function StatusBadge({ status }) {
       `}
     >
       {canonicalStatus(status)}
+    </span>
+  );
+}
+
+/* ----------------------------------
+   PAYMENT BADGE
+---------------------------------- */
+
+function PaymentBadge({ status }) {
+  const label = status || "Pending";
+
+  const style =
+    PAYMENT_STYLES[String(label).toLowerCase()] ||
+    "bg-gray-50 text-gray-700 border-gray-200";
+
+  return (
+    <span
+      className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${style}`}
+    >
+      {label}
     </span>
   );
 }
@@ -337,11 +381,7 @@ function StatusTracker({ status }) {
                     top-[7px]
                     h-[2px]
                     w-full
-                    ${
-                      idx < current
-                        ? "bg-[#1F4438]"
-                        : "bg-[#D8E0D9]"
-                    }
+                    ${idx < current ? "bg-[#1F4438]" : "bg-[#D8E0D9]"}
                   `}
                 />
               )}
@@ -361,11 +401,7 @@ function StatusTracker({ status }) {
                       ? "border-[#1F4438] bg-[#1F4438]"
                       : "border-[#C9D2CD] bg-[#F7F5EF]"
                   }
-                  ${
-                    isCurrent
-                      ? "ring-4 ring-[#1F4438]/10"
-                      : ""
-                  }
+                  ${isCurrent ? "ring-4 ring-[#1F4438]/10" : ""}
                 `}
               />
 
@@ -374,11 +410,7 @@ function StatusTracker({ status }) {
                   px-2
                   text-[11px]
                   leading-tight
-                  ${
-                    done
-                      ? "font-semibold text-[#1F4438]"
-                      : "text-[#89968F]"
-                  }
+                  ${done ? "font-semibold text-[#1F4438]" : "text-[#89968F]"}
                 `}
               >
                 {stage}
@@ -405,8 +437,7 @@ export default function Track() {
   const [expandedId, setExpandedId] = useState(null);
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] =
-    useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -414,6 +445,9 @@ export default function Track() {
   // Confirm-order UI state
   const [confirmingId, setConfirmingId] = useState(null);
   const [confirmErrors, setConfirmErrors] = useState({});
+
+  // Product image preview modal: { src, name } or null
+  const [previewImage, setPreviewImage] = useState(null);
 
   /* ----------------------------------
      LOAD ORDERS
@@ -438,10 +472,26 @@ export default function Track() {
     loadOrders();
   }, []);
 
+  // Close the image modal with Escape and lock page scroll while it's open
+  useEffect(() => {
+    if (!previewImage) return;
+
+    function onKeyDown(e) {
+      if (e.key === "Escape") setPreviewImage(null);
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [previewImage]);
+
   function toggleExpand(id) {
-    setExpandedId((prev) =>
-      prev === id ? null : id
-    );
+    setExpandedId((prev) => (prev === id ? null : id));
   }
 
   /* ----------------------------------
@@ -456,9 +506,7 @@ export default function Track() {
       const { order: updatedOrder } = await ordersApi.confirmOrder(orderId);
 
       setOrders((prev) =>
-        prev.map((o) =>
-          o._id === orderId ? { ...o, ...updatedOrder } : o
-        )
+        prev.map((o) => (o._id === orderId ? { ...o, ...updatedOrder } : o))
       );
     } catch (err) {
       const message =
@@ -478,35 +526,28 @@ export default function Track() {
   const filteredOrders = useMemo(() => {
     const term = search.trim().toLowerCase();
 
-    const from = dateFrom
-      ? new Date(dateFrom)
-      : null;
+    const from = dateFrom ? new Date(dateFrom) : null;
 
-    const to = dateTo
-      ? new Date(dateTo)
-      : null;
+    const to = dateTo ? new Date(dateTo) : null;
 
     if (to) {
       to.setHours(23, 59, 59, 999);
     }
 
     return orders.filter((order) => {
-      if (
-        term &&
-        !order.orderNumber
-          ?.toLowerCase()
-          .includes(term)
-      ) {
-        return false;
+      if (term) {
+        const orderNo = String(order.orderNumber || "").toLowerCase();
+        const invoiceNo = String(order.invoiceNumber || "").toLowerCase();
+
+        if (!orderNo.includes(term) && !invoiceNo.includes(term)) {
+          return false;
+        }
       }
 
       if (statusFilter !== "All") {
         const currentStatus = canonicalStatus(order.status);
 
-        if (
-          currentStatus.toLowerCase() !==
-          statusFilter.toLowerCase()
-        ) {
+        if (currentStatus.toLowerCase() !== statusFilter.toLowerCase()) {
           return false;
         }
       }
@@ -525,13 +566,7 @@ export default function Track() {
 
       return true;
     });
-  }, [
-    orders,
-    search,
-    statusFilter,
-    dateFrom,
-    dateTo,
-  ]);
+  }, [orders, search, statusFilter, dateFrom, dateTo]);
 
   /* ----------------------------------
      GROUP ORDERS BY DATE
@@ -560,11 +595,7 @@ export default function Track() {
     setDateTo("");
   }
 
-  const hasActiveFilters =
-    search ||
-    statusFilter !== "All" ||
-    dateFrom ||
-    dateTo;
+  const hasActiveFilters = search || statusFilter !== "All" || dateFrom || dateTo;
 
   const inputClass = `
     w-full
@@ -586,6 +617,9 @@ export default function Track() {
 
   const labelClass =
     "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6B7B73]";
+
+  const miniLabelClass =
+    "mb-0.5 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[#89968F]";
 
   /* ----------------------------------
      LOADING
@@ -641,8 +675,8 @@ export default function Track() {
               </h1>
 
               <p className="mt-2 text-sm leading-6 text-[#6B7B73]">
-                See the latest status and delivery
-                progress of everything you've ordered.
+                See the latest status and delivery progress of everything
+                you've ordered.
               </p>
             </div>
           </div>
@@ -693,11 +727,8 @@ export default function Track() {
                 {/* SEARCH */}
 
                 <div>
-                  <label
-                    htmlFor="orderSearch"
-                    className={labelClass}
-                  >
-                    Order number
+                  <label htmlFor="orderSearch" className={labelClass}>
+                    Order / invoice number
                   </label>
 
                   <input
@@ -705,9 +736,7 @@ export default function Track() {
                     type="text"
                     placeholder="e.g. ORD-1042"
                     value={search}
-                    onChange={(e) =>
-                      setSearch(e.target.value)
-                    }
+                    onChange={(e) => setSearch(e.target.value)}
                     className={inputClass}
                   />
                 </div>
@@ -715,41 +744,28 @@ export default function Track() {
                 {/* STATUS */}
 
                 <div>
-                  <label
-                    htmlFor="statusFilter"
-                    className={labelClass}
-                  >
+                  <label htmlFor="statusFilter" className={labelClass}>
                     Status
                   </label>
 
                   <select
                     id="statusFilter"
                     value={statusFilter}
-                    onChange={(e) =>
-                      setStatusFilter(e.target.value)
-                    }
+                    onChange={(e) => setStatusFilter(e.target.value)}
                     className={inputClass}
                   >
-                    {STATUS_FILTER_OPTIONS.map(
-                      (status) => (
-                        <option
-                          key={status}
-                          value={status}
-                        >
-                          {status}
-                        </option>
-                      )
-                    )}
+                    {STATUS_FILTER_OPTIONS.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 {/* FROM DATE */}
 
                 <div>
-                  <label
-                    htmlFor="dateFrom"
-                    className={labelClass}
-                  >
+                  <label htmlFor="dateFrom" className={labelClass}>
                     From
                   </label>
 
@@ -757,9 +773,7 @@ export default function Track() {
                     id="dateFrom"
                     type="date"
                     value={dateFrom}
-                    onChange={(e) =>
-                      setDateFrom(e.target.value)
-                    }
+                    onChange={(e) => setDateFrom(e.target.value)}
                     className={inputClass}
                   />
                 </div>
@@ -767,10 +781,7 @@ export default function Track() {
                 {/* TO DATE */}
 
                 <div>
-                  <label
-                    htmlFor="dateTo"
-                    className={labelClass}
-                  >
+                  <label htmlFor="dateTo" className={labelClass}>
                     To
                   </label>
 
@@ -778,9 +789,7 @@ export default function Track() {
                     id="dateTo"
                     type="date"
                     value={dateTo}
-                    onChange={(e) =>
-                      setDateTo(e.target.value)
-                    }
+                    onChange={(e) => setDateTo(e.target.value)}
                     className={inputClass}
                   />
                 </div>
@@ -811,401 +820,459 @@ export default function Track() {
 
           {/* NO FILTER RESULTS */}
 
-          {!error &&
-            orders.length > 0 &&
-            filteredOrders.length === 0 && (
-              <EmptyState
-                title="No matching orders"
-                description="Try changing or clearing your filters."
-              />
-            )}
+          {!error && orders.length > 0 && filteredOrders.length === 0 && (
+            <EmptyState
+              title="No matching orders"
+              description="Try changing or clearing your filters."
+            />
+          )}
 
           {/* ORDER GROUPS */}
 
           <div className="space-y-8">
-            {groupedByDay.map(
-              ([key, dayOrders]) => (
-                <section key={key}>
-                  <div className="mb-3 flex items-center gap-3">
-                    <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-[#8FAE9E]">
-                      {key === "unknown"
-                        ? "Date unknown"
-                        : formatDateHeading(
-                            dayOrders[0].createdAt
-                          )}
-                    </h3>
+            {groupedByDay.map(([key, dayOrders]) => (
+              <section key={key}>
+                {/* DATE HEADING: order numbers | day | month & year */}
+                <div className="mb-3 grid grid-cols-3 items-center gap-3 border-b border-[#D8E0D9] pb-2">
+                  {/* LEFT: Order No. */}
+                  <p className="truncate text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#8FAE9E]">
+                    {dayOrders.map((o) => o.orderNumber).join(", ")}
+                  </p>
 
-                    <div className="h-px flex-1 bg-[#D8E0D9]" />
-                  </div>
+                  {/* MIDDLE: Day */}
+                  <h3 className="text-center text-xs font-semibold uppercase tracking-[0.1em] text-[#152420]">
+                    {key === "unknown"
+                      ? "Date unknown"
+                      : formatDayHeading(dayOrders[0].createdAt)}
+                  </h3>
 
-                  <div className="space-y-3">
-                    {dayOrders.map((order) => {
-                      const isExpanded =
-                        expandedId === order._id;
+                  {/* RIGHT: Month and year */}
+                  <p className="text-right text-xs font-semibold uppercase tracking-[0.1em] text-[#8FAE9E]">
+                    {key === "unknown"
+                      ? ""
+                      : formatMonthYear(dayOrders[0].createdAt)}
+                  </p>
+                </div>
 
-                      const needsConfirmation = isPlaced(
-                        order.status
-                      );
+                <div className="space-y-3">
+                  {dayOrders.map((order) => {
+                    const isExpanded = expandedId === order._id;
 
-                      return (
-                        <div
-                          key={order._id}
+                    const needsConfirmation = isPlaced(order.status);
+
+                    const invoiceAmount = invoiceAmountOf(order);
+                    const due = balanceDueOf(order);
+
+                    const approxTotal = (order.products || []).reduce(
+                      (sum, p) => sum + Number(p.subtotal || 0),
+                      0
+                    );
+
+                    return (
+                      <div
+                        key={order._id}
+                        className="
+                          overflow-hidden
+                          rounded-xl
+                          border
+                          border-[#D8E0D9]
+                          bg-white
+                          shadow-[0_1px_3px_rgba(21,36,32,0.04)]
+                          transition
+                          hover:border-[#B8C6BE]
+                        "
+                      >
+                        {/* ORDER HEADER: order, invoice no./date, invoice amount, payment, status */}
+
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(order._id)}
                           className="
-                            overflow-hidden
-                            rounded-xl
-                            border
-                            border-[#D8E0D9]
-                            bg-white
-                            shadow-[0_1px_3px_rgba(21,36,32,0.04)]
+                            grid
+                            w-full
+                            grid-cols-2
+                            items-start
+                            gap-x-4
+                            gap-y-4
+                            px-4
+                            py-4
+                            text-left
                             transition
-                            hover:border-[#B8C6BE]
+                            hover:bg-[#FAFAF7]
+                            sm:px-5
+                            lg:grid-cols-[1.1fr_1.1fr_0.9fr_1.1fr_auto_20px]
+                            lg:items-center
                           "
                         >
-                          {/* ORDER HEADER */}
+                          {/* ORDER */}
+                          <div className="min-w-0">
+                            <span className={miniLabelClass}>Order</span>
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              toggleExpand(order._id)
-                            }
-                            className="
-                              grid
-                              w-full
-                              grid-cols-[1fr_auto]
-                              items-center
-                              gap-3
-                              px-4
-                              py-4
-                              text-left
-                              transition
-                              hover:bg-[#FAFAF7]
-                              sm:grid-cols-[1fr_auto_auto_auto]
-                              sm:px-5
-                            "
-                          >
-                            <div className="min-w-0">
-                              <p className="truncate font-semibold text-[#152420]">
-                                {order.orderNumber}
-                              </p>
-
-                              <p className="mt-1 text-xs text-[#89968F]">
-                                {formatDate(
-                                  order.createdAt
-                                )}
-                              </p>
-                            </div>
-
-                            <div className="hidden sm:block">
-                              <StatusBadge
-                                status={order.status}
-                              />
-                            </div>
-
-                            <p className="whitespace-nowrap font-semibold text-[#152420]">
-                              {formatCurrency(
-                                order.grandTotal
-                              )}
+                            <p className="truncate font-semibold text-[#152420]">
+                              {order.orderNumber}
                             </p>
 
-                            <svg
-                              className={`
-                                hidden
-                                h-5
-                                w-5
-                                text-[#89968F]
-                                transition-transform
-                                sm:block
-                                ${
-                                  isExpanded
-                                    ? "rotate-180"
-                                    : ""
-                                }
-                              `}
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <path
-                                d="m6 9 6 6 6-6"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
+                            <p className="mt-1 text-xs text-[#89968F]">
+                              {formatDate(order.createdAt)}
+                            </p>
+                          </div>
 
-                            <div className="col-span-2 sm:hidden">
-                              <StatusBadge
-                                status={order.status}
-                              />
+                          {/* INVOICE NO. + INVOICE DATE */}
+                          <div className="min-w-0">
+                            <span className={miniLabelClass}>Invoice no.</span>
+
+                            <p className="truncate font-semibold text-[#152420]">
+                              {order.invoiceNumber || "—"}
+                            </p>
+
+                            <p className="mt-1 text-xs text-[#89968F]">
+                              {formatDate(order.invoiceDate)}
+                            </p>
+                          </div>
+
+                          {/* INVOICE AMOUNT */}
+                          <div>
+                            <span className={miniLabelClass}>
+                              Invoice amount
+                            </span>
+
+                            <p className="whitespace-nowrap font-semibold text-[#152420]">
+                              {formatCurrency(invoiceAmount)}
+                            </p>
+                          </div>
+
+                          {/* PAYMENT DETAILS */}
+                          <div>
+                            <span className={miniLabelClass}>Payment</span>
+
+                            <div className="flex flex-col items-start gap-1">
+                              <PaymentBadge status={order.paymentStatus} />
+
+                              <span className="text-xs text-[#89968F]">
+                                {order.paymentMethod || "—"}
+                                {due > 0 && ` · Due ${formatCurrency(due)}`}
+                              </span>
                             </div>
-                          </button>
+                          </div>
 
-                          {/* CONFIRM ORDER BANNER (visible even when collapsed) */}
+                          {/* ORDER STATUS */}
+                          <div>
+                            <span className={miniLabelClass}>Status</span>
 
-                          {needsConfirmation && (
-                            <div
-                              className="
-                                flex
-                                flex-col
-                                gap-2
-                                border-t
-                                border-[#D8E0D9]
-                                bg-[#F0F6F2]
-                                px-4
-                                py-3
-                                sm:flex-row
-                                sm:items-center
-                                sm:justify-between
-                                sm:px-5
-                              "
-                            >
-                              <p className="text-sm text-[#4C5C55]">
-                                Please confirm this order so we
-                                can start processing it.
+                            <StatusBadge status={order.status} />
+                          </div>
+
+                          <svg
+                            className={`
+                              hidden
+                              h-5
+                              w-5
+                              text-[#89968F]
+                              transition-transform
+                              lg:block
+                              ${isExpanded ? "rotate-180" : ""}
+                            `}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path
+                              d="m6 9 6 6 6-6"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+
+                        {/* EXPANDED */}
+
+                        {isExpanded && (
+                          <div className="border-t border-[#E5EAE7] px-4 py-5 sm:px-5">
+                            <StatusTracker status={order.status} />
+
+                            {/* CUSTOMER-VISIBLE DELIVERY OTP */}
+                            {shouldShowDeliveryOtp(order) && (
+                              <div className="mb-5 rounded-xl border border-[#B8D3C5] bg-[#EFF7F2] px-5 py-5">
+                                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#6B7B73]">
+                                  Delivery Verification
+                                </p>
+
+                                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                  <div>
+                                    <p className="text-sm text-[#4C5C55]">
+                                      Give this OTP to the delivery person only
+                                      when you receive your order.
+                                    </p>
+                                    <p className="mt-1 text-xs text-[#89968F]">
+                                      Do not share it before receiving the
+                                      order.
+                                    </p>
+                                  </div>
+
+                                  <div className="rounded-xl border border-[#1F4438]/20 bg-white px-6 py-3 text-center shadow-sm">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#89968F]">
+                                      Delivery OTP
+                                    </p>
+                                    <p className="mt-1 font-mono text-3xl font-bold tracking-[0.25em] text-[#1F4438]">
+                                      {order.deliveryOtp}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* INVOICE & PAYMENT DETAILS */}
+                            <div className="mb-5 rounded-lg bg-[#F7F8F5] px-4 py-4">
+                              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-[#8FAE9E]">
+                                Invoice &amp; payment details
                               </p>
 
-                              <button
-                                type="button"
-                                disabled={
-                                  confirmingId === order._id
-                                }
-                                onClick={() =>
-                                  handleConfirm(order._id)
-                                }
-                                className="
-                                  inline-flex
-                                  items-center
-                                  justify-center
-                                  rounded-lg
-                                  bg-[#1F4438]
-                                  px-4
-                                  py-2
-                                  text-sm
-                                  font-semibold
-                                  text-white
-                                  transition
-                                  hover:bg-[#173229]
-                                  disabled:cursor-not-allowed
-                                  disabled:opacity-60
-                                "
-                              >
-                                {confirmingId === order._id
-                                  ? "Confirming…"
-                                  : "Confirm Order"}
-                              </button>
-                            </div>
-                          )}
-
-                          {/* EXPANDED */}
-
-                          {isExpanded && (
-                            <div className="border-t border-[#E5EAE7] px-4 py-5 sm:px-5">
-                              {confirmErrors[order._id] && (
-                                <p className="mb-4 text-sm text-red-600">
-                                  {confirmErrors[order._id]}
-                                </p>
-                              )}
-
-                              <StatusTracker
-                                status={order.status}
-                              />
-
-                              {/* CUSTOMER-VISIBLE DELIVERY OTP */}
-                              {shouldShowDeliveryOtp(order) && (
-                                <div className="mb-5 rounded-xl border border-[#B8D3C5] bg-[#EFF7F2] px-5 py-5">
-                                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#6B7B73]">
-                                    Delivery Verification
-                                  </p>
-
-                                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                    <div>
-                                      <p className="text-sm text-[#4C5C55]">
-                                        Give this OTP to the delivery person only when you receive your order.
-                                      </p>
-                                      <p className="mt-1 text-xs text-[#89968F]">
-                                        Do not share it before receiving the order.
-                                      </p>
-                                    </div>
-
-                                    <div className="rounded-xl border border-[#1F4438]/20 bg-white px-6 py-3 text-center shadow-sm">
-                                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#89968F]">
-                                        Delivery OTP
-                                      </p>
-                                      <p className="mt-1 font-mono text-3xl font-bold tracking-[0.25em] text-[#1F4438]">
-                                        {order.deliveryOtp}
-                                      </p>
-                                    </div>
-                                  </div>
+                              <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
+                                <div>
+                                  <dt className={miniLabelClass}>Invoice no.</dt>
+                                  <dd className="font-medium text-[#152420]">
+                                    {order.invoiceNumber || "—"}
+                                  </dd>
                                 </div>
-                              )}
 
-                              {/* DELIVERY INFORMATION */}
+                                <div>
+                                  <dt className={miniLabelClass}>
+                                    Invoice date
+                                  </dt>
+                                  <dd className="font-medium text-[#152420]">
+                                    {formatDate(order.invoiceDate)}
+                                  </dd>
+                                </div>
 
-                              {(order.deliveryAssignedToName ||
-                                order.preferredDeliveryDate) && (
-                                <div className="mb-5 rounded-lg bg-[#F7F8F5] px-4 py-3">
-                                  {order.deliveryAssignedToName && (
-                                    <p className="text-sm text-[#4C5C55]">
-                                      <span className="font-medium text-[#152420]">
-                                        Delivery:
-                                      </span>{" "}
-                                      {
-                                        order.deliveryAssignedToName
-                                      }
-                                    </p>
-                                  )}
+                                <div>
+                                  <dt className={miniLabelClass}>
+                                    Invoice amount
+                                  </dt>
+                                  <dd className="font-medium text-[#152420]">
+                                    {formatCurrency(invoiceAmount)}
+                                  </dd>
+                                </div>
 
-                                  {order.preferredDeliveryDate && (
-                                    <p className="mt-1 text-sm text-[#4C5C55]">
-                                      <span className="font-medium text-[#152420]">
-                                        Preferred delivery:
-                                      </span>{" "}
-                                      {formatDate(
-                                        order.preferredDeliveryDate
+                                <div>
+                                  <dt className={miniLabelClass}>
+                                    Payment method
+                                  </dt>
+                                  <dd className="font-medium text-[#152420]">
+                                    {order.paymentMethod || "—"}
+                                  </dd>
+                                </div>
+
+                                <div>
+                                  <dt className={miniLabelClass}>
+                                    Payment status
+                                  </dt>
+                                  <dd>
+                                    <PaymentBadge status={order.paymentStatus} />
+                                  </dd>
+                                </div>
+
+                                {order.amountPaid != null && (
+                                  <div>
+                                    <dt className={miniLabelClass}>
+                                      Paid / Due
+                                    </dt>
+                                    <dd className="font-medium text-[#152420]">
+                                      {formatCurrency(order.amountPaid)}
+                                      {due > 0 && (
+                                        <span className="text-red-600">
+                                          {" "}
+                                          / {formatCurrency(due)}
+                                        </span>
                                       )}
-                                    </p>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* PRODUCTS TABLE */}
-
-                              <div className="overflow-x-auto">
-                                <table className="min-w-[700px] w-full text-sm">
-                                  <thead>
-                                    <tr className="border-b border-[#D8E0D9] text-left text-[11px] uppercase tracking-[0.08em] text-[#89968F]">
-                                      <th className="pb-3 pr-4 font-semibold">
-                                        Item
-                                      </th>
-
-                                      <th className="pb-3 pr-4 font-semibold">
-                                        Qty
-                                      </th>
-
-                                      <th className="pb-3 pr-4 font-semibold">
-                                        MRP
-                                      </th>
-
-                                      <th className="pb-3 pr-4 font-semibold">
-                                        Price
-                                      </th>
-
-                                      <th className="pb-3 text-right font-semibold">
-                                        Amount
-                                      </th>
-                                    </tr>
-                                  </thead>
-
-                                  <tbody>
-                                    {(order.products || []).map(
-                                      (product, idx) => (
-                                        <tr
-                                          key={idx}
-                                          className="border-b border-[#EDF0EE] last:border-0"
-                                        >
-                                          <td className="py-3 pr-4">
-                                            <div className="flex items-center gap-3">
-                                              {product.image && (
-                                                <img
-                                                  src={
-                                                    product.image
-                                                  }
-                                                  alt={
-                                                    product.productName ||
-                                                    "Product"
-                                                  }
-                                                  className="h-10 w-10 flex-shrink-0 rounded-lg border border-[#E5EAE7] object-cover"
-                                                />
-                                              )}
-
-                                              <span className="font-medium text-[#152420]">
-                                                {
-                                                  product.productName
-                                                }
-                                              </span>
-                                            </div>
-                                          </td>
-
-                                          <td className="py-3 pr-4 text-[#6B7B73]">
-                                            {product.packQty
-                                              ? `${product.packQty} pack`
-                                              : ""}
-
-                                            {product.packQty &&
-                                            product.looseQty
-                                              ? " + "
-                                              : ""}
-
-                                            {product.looseQty
-                                              ? `${product.looseQty} loose`
-                                              : ""}
-
-                                            {product.qtyPerPack
-                                              ? ` (${product.qtyPerPack}/pack)`
-                                              : ""}
-                                          </td>
-
-                                          <td className="py-3 pr-4 text-[#6B7B73]">
-                                            {formatCurrency(
-                                              product.mrp
-                                            )}
-                                          </td>
-
-                                          <td className="py-3 pr-4 text-[#6B7B73]">
-                                            {product.packQty
-                                              ? formatCurrency(
-                                                  product.price
-                                                )
-                                              : ""}
-
-                                            {product.packQty &&
-                                            product.looseQty
-                                              ? " / "
-                                              : ""}
-
-                                            {product.looseQty
-                                              ? `${formatCurrency(
-                                                  product.looseUnitPrice
-                                                )} each`
-                                              : ""}
-                                          </td>
-
-                                          <td className="py-3 text-right font-semibold text-[#152420]">
-                                            {formatCurrency(
-                                              product.subtotal
-                                            )}
-                                          </td>
-                                        </tr>
-                                      )
-                                    )}
-                                  </tbody>
-                                </table>
-                              </div>
-
-                              {/* BACKORDER */}
-
-                              {Array.isArray(
-                                order.backorderItems
-                              ) &&
-                                order.backorderItems
-                                  .length > 0 && (
-                                  <div className="mt-4 rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
-                                    {
-                                      order.backorderItems
-                                        .length
-                                    }{" "}
-                                    item(s) still pending
+                                    </dd>
                                   </div>
                                 )}
+                              </dl>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              )
-            )}
+
+                            {/* DELIVERY INFORMATION */}
+
+                            {order.preferredDeliveryDate && (
+                              <div className="mb-5 rounded-lg bg-[#F7F8F5] px-4 py-3">
+                                <p className="text-sm text-[#4C5C55]">
+                                  <span className="font-medium text-[#152420]">
+                                    Preferred delivery:
+                                  </span>{" "}
+                                  {formatDate(order.preferredDeliveryDate)}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* PRODUCTS TABLE (grid table on md+, stacked cards on mobile) */}
+
+                            <table className="w-full border-collapse text-sm">
+                              <thead className="hidden md:table-header-group">
+                                <tr className="bg-[#E0E0E0] text-left text-[#152420]">
+                                  <th className="border border-[#C9D2CD] px-3 py-2.5 font-medium">
+                                    S No.
+                                  </th>
+                                  <th className="border border-[#C9D2CD] px-3 py-2.5 font-medium">
+                                    Image
+                                  </th>
+                                  <th className="border border-[#C9D2CD] px-3 py-2.5 font-medium">
+                                    Product Name
+                                  </th>
+                                  <th className="border border-[#C9D2CD] px-3 py-2.5 font-medium">
+                                    Pack Qty
+                                  </th>
+                                  <th className="border border-[#C9D2CD] px-3 py-2.5 font-medium">
+                                    Loose Qty
+                                  </th>
+                                  <th className="border border-[#C9D2CD] px-3 py-2.5 font-medium">
+                                    MRP
+                                  </th>
+                                  <th className="border border-[#C9D2CD] px-3 py-2.5 font-medium">
+                                    Net Amount
+                                  </th>
+                                </tr>
+                              </thead>
+
+                              <tbody className="block space-y-3 md:table-row-group md:space-y-0">
+                                {(order.products || []).map((product, idx) => {
+                                  const cell =
+                                    "flex items-center justify-between gap-4 py-1.5 text-[#4C5C55] " +
+                                    "md:table-cell md:border md:border-[#C9D2CD] md:px-3 md:py-2.5 " +
+                                    "before:text-[10px] before:font-semibold before:uppercase before:tracking-[0.08em] " +
+                                    "before:text-[#89968F] before:content-[attr(data-label)] md:before:hidden";
+
+                                  return (
+                                    <tr
+                                      key={idx}
+                                      className="block rounded-lg border border-[#E5EAE7] px-3 py-2 md:table-row md:rounded-none md:border-0 md:p-0"
+                                    >
+                                      <td data-label="S No." className={cell}>
+                                        <span>{idx + 1}</span>
+                                      </td>
+
+                                      <td data-label="Image" className={cell}>
+                                        {product.image ? (
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setPreviewImage({
+                                                src: product.image,
+                                                name: product.productName,
+                                              })
+                                            }
+                                            aria-label={`View image of ${
+                                              product.productName || "product"
+                                            }`}
+                                            className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1F4438]/40"
+                                          >
+                                            <img
+                                              src={product.image}
+                                              alt={
+                                                product.productName || "Product"
+                                              }
+                                              className="h-10 w-10 cursor-zoom-in rounded-lg border border-[#E5EAE7] object-cover transition hover:opacity-80"
+                                            />
+                                          </button>
+                                        ) : (
+                                          <span>—</span>
+                                        )}
+                                      </td>
+
+                                      <td
+                                        data-label="Product Name"
+                                        className={`${cell} font-medium text-[#152420]`}
+                                      >
+                                        <span className="text-right md:text-left">
+                                          {product.productName}
+                                        </span>
+                                      </td>
+
+                                      <td data-label="Pack Qty" className={cell}>
+                                        <span>{product.packQty || 0}</span>
+                                      </td>
+
+                                      <td data-label="Loose Qty" className={cell}>
+                                        <span>{product.looseQty || 0}</span>
+                                      </td>
+
+                                      <td data-label="MRP" className={cell}>
+                                        <span>{formatMoney(product.mrp)}</span>
+                                      </td>
+
+                                      <td data-label="Net Amount" className={cell}>
+                                        <span>{formatMoney(product.subtotal)}</span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+
+                            {/* APPROX TOTAL + CONFIRM ORDER */}
+
+                            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="order-2 sm:order-1">
+                                {needsConfirmation && (
+                                  <div className="flex flex-col items-start gap-1.5">
+                                    <button
+                                      type="button"
+                                      disabled={confirmingId === order._id}
+                                      onClick={() => handleConfirm(order._id)}
+                                      className="
+                                        inline-flex
+                                        w-full
+                                        items-center
+                                        justify-center
+                                        rounded-lg
+                                        bg-[#1F4438]
+                                        px-5
+                                        py-2.5
+                                        text-sm
+                                        font-semibold
+                                        text-white
+                                        transition
+                                        hover:bg-[#173229]
+                                        disabled:cursor-not-allowed
+                                        disabled:opacity-60
+                                        sm:w-auto
+                                      "
+                                    >
+                                      {confirmingId === order._id
+                                        ? "Confirming…"
+                                        : "Confirm Order"}
+                                    </button>
+
+                                    {confirmErrors[order._id] && (
+                                      <p className="text-sm text-red-600">
+                                        {confirmErrors[order._id]}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              <p className="order-1 text-right text-sm font-medium text-[#152420] sm:order-2">
+                                Approx Total: {formatMoney(approxTotal)}
+                              </p>
+                            </div>
+
+                            {/* BACKORDER */}
+
+                            {Array.isArray(order.backorderItems) &&
+                              order.backorderItems.length > 0 && (
+                                <div className="mt-4 rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
+                                  {order.backorderItems.length} item(s) still
+                                  pending
+                                </div>
+                              )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
           </div>
 
           {/* BACK TO DETAILS LINK */}
@@ -1236,6 +1303,44 @@ export default function Track() {
         </div>
       </div>
 
+      {/* PRODUCT IMAGE MODAL */}
+
+      {previewImage && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={previewImage.name || "Product image"}
+          onClick={() => setPreviewImage(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-xl"
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewImage(null)}
+              aria-label="Close"
+              className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-lg leading-none text-[#152420] shadow transition hover:bg-white"
+            >
+              ×
+            </button>
+
+            <img
+              src={previewImage.src}
+              alt={previewImage.name || "Product"}
+              className="max-h-[70vh] w-full bg-[#F7F5EF] object-contain"
+            />
+
+            {previewImage.name && (
+              <p className="border-t border-[#E5EAE7] px-4 py-3 text-sm font-medium text-[#152420]">
+                {previewImage.name}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       <SiteFooter />
     </div>
   );
@@ -1245,10 +1350,7 @@ export default function Track() {
    EMPTY STATE
 ---------------------------------- */
 
-function EmptyState({
-  title,
-  description,
-}) {
+function EmptyState({ title, description }) {
   return (
     <div className="rounded-xl border border-dashed border-[#C9D2CD] bg-white/50 px-5 py-12 text-center">
       <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-[#EAF0EC] text-[#1F4438]">
@@ -1266,26 +1368,15 @@ function EmptyState({
             strokeLinejoin="round"
           />
 
-          <path
-            d="M14 2v6h6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          <path d="M14 2v6h6" strokeLinecap="round" strokeLinejoin="round" />
 
-          <path
-            d="M9 13h6M9 17h4"
-            strokeLinecap="round"
-          />
+          <path d="M9 13h6M9 17h4" strokeLinecap="round" />
         </svg>
       </div>
 
-      <h3 className="font-semibold text-[#152420]">
-        {title}
-      </h3>
+      <h3 className="font-semibold text-[#152420]">{title}</h3>
 
-      <p className="mt-1 text-sm text-[#6B7B73]">
-        {description}
-      </p>
+      <p className="mt-1 text-sm text-[#6B7B73]">{description}</p>
     </div>
   );
 }

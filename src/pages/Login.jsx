@@ -104,9 +104,8 @@ export default function Login() {
           </p>
         </div>
 
-        {/* ADDED: shop location, contact number and email */}
-        {/* CHANGED: bumped to text-base + font-semibold + brighter text color for emphasis */}
-        <div className="relative z-10 mb-5 space-y-3 text-base font-semibold leading-6 text-[#E7F1EC]">
+        <div className="relative z-10 mb-5 space-y-3 text-base font-semibold leading-6 text-white">
+          {/* Address */}
           <div className="flex items-start gap-2.5">
             <svg
               className="mt-0.5 h-5 w-5 shrink-0 text-[#7FD1C5]"
@@ -120,9 +119,13 @@ export default function Login() {
               <path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z" />
               <circle cx="12" cy="10" r="3" />
             </svg>
-            <span>123 Main Street, Muzaffarpur, Bihar 842001</span>
+
+            <span className="text-white">
+              Sona Medical Stores, unit of Sona Pharma Labs Pvt. Ltd., Opposite Planetarium (Tara Mandal), Bailey Road, Patna, Bihar 800001
+            </span>
           </div>
 
+          {/* Phone */}
           <div className="flex items-center gap-2.5">
             <svg
               className="h-5 w-5 shrink-0 text-[#7FD1C5]"
@@ -135,14 +138,16 @@ export default function Login() {
             >
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92Z" />
             </svg>
+
             <a
-              href="tel:+919931917455"
-              className="text-[#E7F1EC] no-underline transition hover:text-white"
+              href="tel:+919471000638"
+              className="!text-white !no-underline transition hover:!text-white/80"
             >
-              +91 9931917455
+              +91 9471000638
             </a>
           </div>
 
+          {/* Email */}
           <div className="flex items-center gap-2.5">
             <svg
               className="h-5 w-5 shrink-0 text-[#7FD1C5]"
@@ -156,9 +161,10 @@ export default function Login() {
               <rect x="2" y="4" width="20" height="16" rx="2" />
               <path d="m22 7-10 6L2 7" />
             </svg>
+
             <a
               href="mailto:medicare@sonaind.in"
-              className="text-[#E7F1EC] no-underline transition hover:text-white"
+              className="!text-white !no-underline transition hover:!text-white/80"
             >
               medicare@sonaind.in
             </a>
@@ -170,14 +176,7 @@ export default function Login() {
           Need help signing in?{" "}
           <a
             href="mailto:medicare@sonaind.in"
-            className="
-              text-[#F7F5EF]
-              underline
-              decoration-white/40
-              underline-offset-4
-              transition
-              hover:decoration-white
-            "
+            className="!text-white underline decoration-white/40 underline-offset-4 transition hover:decoration-white"
           >
             medicare@sonaind.in
           </a>
@@ -233,7 +232,7 @@ export default function Login() {
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="e.g. 9931917455"
+                placeholder="e.g. 9471000638"
                 required
                 autoComplete="username"
                 className="

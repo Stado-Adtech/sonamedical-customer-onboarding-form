@@ -51,11 +51,11 @@ export default function Signup() {
       setForm((prev) =>
         prev.city || prev.state || prev.country
           ? {
-              ...prev,
-              city: "",
-              state: "",
-              country: "",
-            }
+            ...prev,
+            city: "",
+            state: "",
+            country: "",
+          }
           : prev
       );
 
@@ -157,8 +157,8 @@ export default function Signup() {
         username: mobileNumber.trim(),
         ...(alternateNumber.trim()
           ? {
-              alternateNumber: alternateNumber.trim(),
-            }
+            alternateNumber: alternateNumber.trim(),
+          }
           : {}),
       };
 
@@ -168,7 +168,7 @@ export default function Signup() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          "Couldn't create your account. Please try again."
+        "Couldn't create your account. Please try again."
       );
     } finally {
       setSubmitting(false);
@@ -215,27 +215,28 @@ export default function Signup() {
 
   return (
     // CHANGED: cooler mint-tinted clinical background to match Login
-    <div className="min-h-screen w-full bg-[#F4F9F7] text-[#152420] lg:grid lg:grid-cols-[0.85fr_1.15fr]">
+    <div className="min-h-screen w-full bg-[#F4F9F7] text-[#152420] lg:grid lg:h-screen lg:min-h-0 lg:grid-cols-[0.85fr_1.15fr] lg:overflow-hidden">
       {/* LEFT PANEL */}
       <div
         className="
-          relative
-          flex
-          min-h-[220px]
-          flex-col
-          justify-between
-          overflow-hidden
-          bg-gradient-to-br
-          from-[#1F4438]
-          to-[#122E26]
-          px-6
-          py-8
-          text-[#F7F5EF]
-          sm:px-10
-          lg:min-h-screen
-          lg:px-12
-          lg:py-14
-        "
+    relative
+    flex
+    min-h-[220px]
+    flex-col
+    justify-between
+    overflow-hidden
+    bg-gradient-to-br
+    from-[#1F4438]
+    to-[#122E26]
+    px-6
+    py-8
+    text-[#F7F5EF]
+    sm:px-10
+    lg:h-screen
+    lg:min-h-0
+    lg:px-12
+    lg:py-10
+  "
       >
         {/* Decorative circles */}
         <div className="pointer-events-none absolute -right-28 -top-28 h-80 w-80 rounded-full bg-white/[0.03]" />
@@ -252,7 +253,7 @@ export default function Signup() {
         </svg>
 
         {/* Logo */}
-          <div className="relative z-10">
+        <div className="relative z-10">
           <img
             src="/inventory.png"
             alt="Company name"
@@ -284,7 +285,7 @@ export default function Signup() {
           Need help signing up?{" "}
           <a
             href="mailto:medicare@sonaind.in"
-            className="text-[#F7F5EF] underline decoration-white/40 underline-offset-4 transition hover:decoration-white"
+            className="!text-white underline decoration-white/40 underline-offset-4 transition hover:decoration-white"
           >
             medicare@sonaind.in
           </a>
@@ -292,7 +293,7 @@ export default function Signup() {
       </div>
 
       {/* RIGHT PANEL */}
-      <div className="flex justify-center px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
+      <div className="flex justify-center px-5 py-10 sm:px-8 lg:h-screen lg:overflow-y-auto lg:px-12 lg:py-14">
         <div className="w-full max-w-[620px]">
           {/* Header */}
           <div className="mb-8">
@@ -348,7 +349,7 @@ export default function Signup() {
                   required
                   value={form.mobileNumber}
                   onChange={update("mobileNumber")}
-                  placeholder="e.g. 9931917455"
+                  placeholder="e.g. 9471000638"
                   className={inputClass}
                 />
               </div>
@@ -366,7 +367,7 @@ export default function Signup() {
                   type="tel"
                   value={form.alternateNumber}
                   onChange={update("alternateNumber")}
-                  placeholder="e.g. 9931917455"
+                  placeholder="e.g. 9471000638"
                   className={inputClass}
                 />
               </div>
