@@ -41,7 +41,7 @@ export default function ForgotPassword() {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          "Couldn't reset your password. Please try again."
+        "Couldn't reset your password. Please try again."
       );
     } finally {
       setSubmitting(false);
@@ -101,7 +101,7 @@ export default function ForgotPassword() {
         />
 
         {/* Logo */}
-         <div className="relative z-10">
+        <div className="relative z-10">
           <img
             src="/inventory.png"
             alt="Company name"
@@ -168,14 +168,7 @@ export default function ForgotPassword() {
           Need help resetting your password?{" "}
           <a
             href="mailto:medicare@sonaind.in"
-            className="
-              text-[#F7F5EF]
-              underline
-              decoration-white/40
-              underline-offset-4
-              transition
-              hover:decoration-white
-            "
+            className="!text-white underline decoration-white/40 underline-offset-4 transition hover:decoration-white"
           >
             medicare@sonaind.in
           </a>
